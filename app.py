@@ -69,7 +69,7 @@ def get_dm():
         if "gcp_service_account" in st.secrets:
             gsheet = SettlementSheetSync(
                 credentials_dict=dict(st.secrets["gcp_service_account"]),
-                spreadsheet_id=st.secrets["spreadsheet"]["spreadsheet_id"],
+                spreadsheet_id=st.secrets["spreadsheet_id"],
             )
     except Exception as e:
         st.sidebar.warning(f"구글 시트 연결 실패: {e}")
@@ -92,13 +92,13 @@ def load_target_dates():
         from google.oauth2.service_account import Credentials
         if "gcp_service_account" not in st.secrets:
             return result
-        if "performer_spreadsheet_id" not in st.secrets.get("spreadsheet", {}):
+        if "performer_spreadsheet_id" not in st.secrets or not st.secrets["performer_spreadsheet_id"]:
             return result
         creds = Credentials.from_service_account_info(
             dict(st.secrets["gcp_service_account"]),
             scopes=["https://www.googleapis.com/auth/spreadsheets"])
         gc = gspread.authorize(creds)
-        sh = gc.open_by_key(st.secrets["spreadsheet"]["performer_spreadsheet_id"])
+        sh = gc.open_by_key(st.secrets["performer_spreadsheet_id"])
 
         cur_year = str(datetime.now().year)
         # 단체ID → 단체명
