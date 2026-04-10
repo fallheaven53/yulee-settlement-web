@@ -92,13 +92,13 @@ def load_target_dates():
         from google.oauth2.service_account import Credentials
         if "gcp_service_account" not in st.secrets:
             return result
-        if "performer_spreadsheet_id" not in st.secrets or not st.secrets["performer_spreadsheet_id"]:
+        if "spreadsheet_id" not in st.secrets:
             return result
         creds = Credentials.from_service_account_info(
             dict(st.secrets["gcp_service_account"]),
             scopes=["https://www.googleapis.com/auth/spreadsheets"])
         gc = gspread.authorize(creds)
-        sh = gc.open_by_key(st.secrets["performer_spreadsheet_id"])
+        sh = gc.open_by_key(st.secrets["spreadsheet_id"])
 
         cur_year = str(datetime.now().year)
         # 단체ID → 단체명
