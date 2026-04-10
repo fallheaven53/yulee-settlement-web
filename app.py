@@ -203,6 +203,9 @@ def render_tab_records():
         selected_rows = sel.get("selection", {}).get("rows", [])
         if selected_rows:
             sel_idx = selected_rows[0]
+            if sel_idx >= len(recs):
+                st.rerun()
+                return
             sel_rec = recs[sel_idx]
             bc1, bc2 = st.columns(2)
             with bc1:
