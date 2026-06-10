@@ -43,9 +43,6 @@ st.markdown("""
 # ══════════════════════════════════════════════════════════════
 
 def check_password():
-    import hashlib
-    _p = st.secrets.get("app_password", "")
-    st.warning(f"DEBUG app_password 길이={len(_p)} 해시={hashlib.sha256(_p.encode()).hexdigest()[:8]}")
     if "app_password" not in st.secrets:
         return True
     if st.session_state.get("authenticated"):
