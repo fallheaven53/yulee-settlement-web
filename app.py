@@ -14,6 +14,15 @@ from data_manager import (
     STATUSES, BANKS, parse_int, fmt_won,
 )
 
+# yulee-common 가용 시 인라인 GCP 블록을 get_client 1줄로 대체 (#2026-070).
+# 가용 안 할 시 기존 인라인 코드 폴백 — 마이그레이션 직후 1개월 안전망.
+try:
+    from yulee_common import get_client as _yc_get_client
+    _USE_YULEE_COMMON = True
+except ImportError:
+    _yc_get_client = None
+    _USE_YULEE_COMMON = False
+
 # ── 페이지 설정 ──
 st.set_page_config(
     page_title="토요상설공연 정산 관리",
@@ -88,17 +97,21 @@ def load_target_dates():
     result = {}
     target_list = []
     try:
-        import gspread
-        from google.oauth2.service_account import Credentials
         if "gcp_service_account" not in st.secrets:
             return result
         if "spreadsheet_id" not in st.secrets:
             return result
-        creds = Credentials.from_service_account_info(
-            dict(st.secrets["gcp_service_account"]),
-            scopes=["https://www.googleapis.com/auth/spreadsheets"])
-        gc = gspread.authorize(creds)
-        sh = gc.open_by_key(st.secrets["spreadsheet_id"])
+        if _USE_YULEE_COMMON:
+            sh = _yc_get_client(spreadsheet_key="spreadsheet_id",
+                                slim_scope=True).sh
+        else:
+            import gspread
+            from google.oauth2.service_account import Credentials
+            creds = Credentials.from_service_account_info(
+                dict(st.secrets["gcp_service_account"]),
+                scopes=["https://www.googleapis.com/auth/spreadsheets"])
+            gc = gspread.authorize(creds)
+            sh = gc.open_by_key(st.secrets["spreadsheet_id"])
 
         cur_year = str(datetime.now().year)
         # 단체ID → 단체명
@@ -646,6 +659,10 @@ def main():
         render_tab_crosscheck()
     with tab3:
         render_tab_by_target()
+
+    # 마이그레이션 검증용 표시 — fallback 청소 시 함께 제거 (#2026-070)
+    st.sidebar.caption(
+        f"공통모듈: {'yulee-common' if _USE_YULEE_COMMON else 'legacy fallback'}")
 
 
 if __name__ == "__main__":

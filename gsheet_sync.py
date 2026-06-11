@@ -11,6 +11,14 @@ try:
 except ImportError:
     HAS_GSPREAD = False
 
+# yulee-common 가용 시 인증·시트 접근을 공통 모듈로 위임 (#2026-070).
+# 가용 안 할 시 기존 로컬 코드 폴백 — 마이그레이션 직후 1개월 안전망.
+try:
+    from yulee_common import GSheetClient
+    _USE_YULEE_COMMON = True
+except ImportError:
+    _USE_YULEE_COMMON = False
+
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
@@ -31,6 +39,16 @@ class SettlementSheetSync:
 
         self.spreadsheet_id = spreadsheet_id
 
+        if _USE_YULEE_COMMON:
+            self._client = GSheetClient(
+                credentials_dict=credentials_dict,
+                credentials_path=credentials_path,
+                spreadsheet_id=spreadsheet_id)
+            self.gc = self._client.gc
+            self.spreadsheet = self._client.sh
+            return
+
+        self._client = None
         if credentials_dict:
             creds = Credentials.from_service_account_info(
                 credentials_dict, scopes=SCOPES)
@@ -44,6 +62,8 @@ class SettlementSheetSync:
         self.spreadsheet = self.gc.open_by_key(spreadsheet_id)
 
     def _get_or_create_sheet(self, title, rows=500, cols=20):
+        if self._client is not None:
+            return self._client.ws(title, rows=rows, cols=cols)
         try:
             return self.spreadsheet.worksheet(title)
         except gspread.exceptions.WorksheetNotFound:
@@ -51,6 +71,10 @@ class SettlementSheetSync:
                 title=title, rows=rows, cols=cols)
 
     def _clear_and_write(self, ws, data):
+        if self._client is not None:
+            # clear 없이 update + 남는 행 정리 + 403/429 재시도
+            self._client.overwrite(ws, data)
+            return
         ws.clear()
         if data:
             ws.update(data, value_input_option="RAW")

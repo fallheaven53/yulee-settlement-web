@@ -4,3 +4,4 @@ openpyxl
 gspread
 google-auth
 plotly
+yulee-common @ git+https://${github_pat}@github.com/fallheaven53/yulee-common@v0.1.0
